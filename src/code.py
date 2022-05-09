@@ -1,5 +1,7 @@
 import time
 import board
+import digitalio
+import keypad
 
 SAMPLE_INDEX = 0  # x on the sparkfun icm-20648 board
 LOOP_SLEEP_TIME = 0.01  # seconds
@@ -16,13 +18,19 @@ from adafruit_icm20x import ICM20948
 
 # our imports
 from scad.open_close import OpenCloseDetector
-from scad.tracker import DoorTracker
 
 # --- init BLE and prepare the adverisement type for later ---
 ble = BLERadio()
 ble.name = "Jay-dev"
 uart = UARTService()
 advertisement = ProvideServicesAdvertisement(uart)
+
+if hasattr(board, "SWITCH"):
+    print("using switch")
+    switch = keypad.Keys([board.SWITCH], value_when_pressed=False, pull=True)
+else:
+    switch = None
+
 
 # from adafruit_ble import BLERadio
 # from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
@@ -35,18 +43,21 @@ i2c = board.I2C()
 icm = ICM20948(i2c, address=0x69)
 
 # --- processing ---
-door = DoorTracker()
 
 detector = OpenCloseDetector(
     # future, link the tracker to the detector with the args below
     drift_thres=DRIFT_THRESH,
+    door_close_thresh=0.1,
+    door_open_thresh=0.1,
 )
 
 
 # --- misc functions ---
 def process_sample(now: float, then: float) -> None:
-
-    detector.new_sample(sample=icm.gyro[SAMPLE_INDEX], dt=now - then)
+    detector.new_sample(
+        sample=icm.gyro[SAMPLE_INDEX],
+        dt=now - then,
+    )
 
 
 def readline():
@@ -54,6 +65,26 @@ def readline():
         return None
     else:
         uart.readline()
+
+
+def calibrate():
+    print("please close the door, the device will calibrate itself in 5 seconds...")
+    for left in range(5, 1, -1):
+        print(f"{left}...")
+        time.sleep(1)
+    else:
+        detector.calibrate()
+
+
+def check_for_button_press():
+    if switch is None:
+        return
+    event = switch.events.get()
+    if event is None:
+        return
+    elif event.released:
+        print("button pressed, starting calibration...")
+        calibrate()
 
 
 def wait_for_connection(run_samples: bool = True):
@@ -87,13 +118,7 @@ def wait_for_connection(run_samples: bool = True):
 def main():
     print("starting advertising...")
     wait_for_connection(run_samples=False)
-
-    print("please close the door, the device will calibrate itself in 5 seconds...")
-    for left in range(1, 5, -1):
-        print(f"{left}...")
-        time.sleep(1)
-    else:
-        detector.calibrate()
+    calibrate()
 
     while True:
         main_loop()
@@ -105,6 +130,8 @@ last_time = time.monotonic()
 def main_loop():
     global last_time
     now = time.monotonic()
+
+    check_for_button_press()
 
     if not ble.connected and USE_BLUETOOTH:
         print("disconnected")

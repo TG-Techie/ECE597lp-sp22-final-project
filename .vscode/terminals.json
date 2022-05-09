@@ -1,0 +1,11 @@
+{
+  "autorun": false,
+  "terminals": [
+    {
+      "name": "sync_drive",
+      "description": "sync ./src to the CIRCUITPY drive",
+      "focus": false,
+      "command": "notify -r 'rsync -ra --exclude=\".*\" --exclude=\"__pycache__\" ./src/ /Volumes/CIRCUITPY/' && exit"
+    },
+  ]
+}

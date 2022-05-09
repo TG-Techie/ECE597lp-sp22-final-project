@@ -1,0 +1,19 @@
+{
+  "commands": [
+    {
+      "command": "commands.refresh",
+      "text": "$(sync)",
+      "tooltip": "Refresh commands",
+      "color": "#FFCC00"
+    },
+    {
+      // run the sync_drive terminal using the terminals extension
+      "command": "terminals.runTerminalByName",
+      "arguments": [
+        "sync_drive"
+      ],
+      "text": "$(sign-out)",
+      "tooltip": "Sync drive"
+    }
+  ]
+}

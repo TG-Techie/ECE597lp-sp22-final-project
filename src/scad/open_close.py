@@ -13,6 +13,7 @@ class OpenCloseDetector:
         drift_thres: float,
         door_close_thresh: float,
         door_open_thresh: float,
+        debug_output: bool = True,
     ) -> None:
         """
         :param drift_thres: radians, the minumum angle a new sample has to be to be considered valid
@@ -24,6 +25,7 @@ class OpenCloseDetector:
         self.drift_thres = drift_thres
         self.door_close_thresh = door_close_thresh
         self.door_open_thresh = door_open_thresh
+        self.debug_output = debug_output
 
         # internal state
         self.angle: float = 0
@@ -47,13 +49,21 @@ class OpenCloseDetector:
             self.angle += d_angle
 
         # print("Gyro X:%.2f, Y: %.2f, Z: %.2f rads/s" % (gyro))
-        print(f"({self.angle}, {sample}, 3.141592653589, -1)")
-        print("")
+        if self.debug_output:
+            print(f"({self.angle}, {sample}, 3.141592653589, -1)")
+            print("")
 
-    def check_door_event(self) -> None | bool:
+    def get_event(self) -> None | bool:
         """
         Call to see if the status of the door has changed.
         :return: True if the door just opened, False if it just closed, None if it hasn't changed
         """
 
-        raise NotImplementedError
+        if self.door_is_open and self.angle < self.door_close_thresh:
+            self.door_is_open = False
+            return False
+        elif not self.door_is_open and self.angle > self.door_open_thresh:
+            self.door_is_open = True
+            return True
+        else:
+            return None
